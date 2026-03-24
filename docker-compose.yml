@@ -1,0 +1,34 @@
+services:
+  dataspoc-lens:
+    build: .
+    container_name: dataspoc-lens
+    ports:
+      # Jupyter notebook
+      - "8888:8888"
+    volumes:
+      # Configs (persistem entre execucoes)
+      - lens-config:/root/.dataspoc-lens
+      # Lake local para dev/teste
+      - ../lake:/lake
+      # Transforms SQL
+      - ./transforms:/root/.dataspoc-lens/transforms
+    environment:
+      # LLM API key para NL-to-SQL (descomente e preencha)
+      # DATASPOC_LLM_API_KEY: ""
+      # DATASPOC_LLM_PROVIDER: "anthropic"  # ou "openai"
+
+      # Credenciais AWS (descomente)
+      # AWS_ACCESS_KEY_ID: ""
+      # AWS_SECRET_ACCESS_KEY: ""
+      # AWS_DEFAULT_REGION: "us-east-1"
+
+      # Credenciais GCP
+      # GOOGLE_APPLICATION_CREDENTIALS: "/credentials/gcp.json"
+
+      # Credenciais Azure
+      # AZURE_STORAGE_CONNECTION_STRING: ""
+
+      PYTHONUNBUFFERED: "1"
+
+volumes:
+  lens-config:
