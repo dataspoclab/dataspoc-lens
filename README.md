@@ -1,213 +1,197 @@
 <h1 align="center">DataSpoc Lens</h1>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/github/actions/workflow/status/dataspoc/dataspoc-lens/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
+  <a href="https://github.com/dataspoclab/dataspoc-lens/actions"><img src="https://img.shields.io/github/actions/workflow/status/dataspoclab/dataspoc-lens/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
   <a href="https://pypi.org/project/dataspoc-lens/"><img src="https://img.shields.io/pypi/v/dataspoc-lens?style=flat-square" alt="PyPI"></a>
   <a href="https://github.com/dataspoclab/dataspoc-lens/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   <a href="https://pypi.org/project/dataspoc-lens/"><img src="https://img.shields.io/pypi/pyversions/dataspoc-lens?style=flat-square" alt="Python 3.10+"></a>
-  <a href="#community"><img src="https://img.shields.io/badge/Discord-join%20chat-7289da?style=flat-square&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 <p align="center"><em>SQL over cloud Parquet. Query your data lake from the terminal.</em></p>
-
-<p align="center">
-  <a href="#features-overview">Docs</a> &nbsp;|&nbsp;
-  <a href="#quick-start">Tutorial</a> &nbsp;|&nbsp;
-  <a href="#community">Discord</a>
-</p>
-
-<!-- TODO: Add hero GIF/screenshot of the interactive shell running a query -->
 
 ## Why Lens?
 
 Data teams store Parquet in S3, GCS, or Azure but still spin up heavy warehouses just to run SQL. **DataSpoc Lens** mounts cloud buckets as DuckDB views and gives you an interactive shell, notebooks, AI-powered queries, and local caching -- all from a single CLI. No servers, no infrastructure, no data copying.
 
-## Highlights
-
-- **Zero infrastructure** -- DuckDB runs in-process, no server or daemon
-- **Multi-cloud** -- S3, GCS, and Azure Blob Storage via fsspec + httpfs
-- **Interactive shell** -- SQL REPL with syntax highlighting and autocomplete
-- **AI Ask** -- natural language to SQL using Ollama, Anthropic, or OpenAI
-- **Local cache** -- download once, query offline
-- **Transforms** -- numbered `.sql` files for repeatable data pipelines
-- **Notebook ready** -- launch JupyterLab or Marimo with tables pre-mounted
-- **Export anywhere** -- CSV, JSON, or Parquet with a single flag
-
 ## Installation
 
 ```bash
-pip install dataspoc-lens[s3]
+pip install dataspoc-lens
 ```
 
-<details>
-<summary>Other install options</summary>
+Cloud and feature extras:
 
 ```bash
-# Google Cloud Storage
-pip install dataspoc-lens[gcs]
-
-# Azure Blob Storage
-pip install dataspoc-lens[azure]
-
-# JupyterLab integration
-pip install dataspoc-lens[jupyter]
-
-# AI natural language queries
-pip install dataspoc-lens[ai]
-
-# Everything
-pip install dataspoc-lens[all]
+pip install dataspoc-lens[s3]       # AWS S3
+pip install dataspoc-lens[gcs]      # Google Cloud Storage
+pip install dataspoc-lens[azure]    # Azure Blob Storage
+pip install dataspoc-lens[jupyter]  # JupyterLab integration
+pip install dataspoc-lens[ai]       # AI natural language queries
+pip install dataspoc-lens[all]      # Everything
 ```
-
-</details>
 
 ## Quick Start
 
+### 1. Initialize and register a bucket
+
 ```bash
-# Initialize configuration
 dataspoc-lens init
-
-# Register a cloud bucket
 dataspoc-lens add-bucket s3://my-data-lake
+```
 
-# Run a SQL query
+Lens discovers tables automatically -- first from Pipe's `.dataspoc/manifest.json`, then by scanning for `*.parquet` files.
+
+### 2. Explore the catalog
+
+```bash
+dataspoc-lens catalog
+dataspoc-lens catalog --detail orders
+```
+
+### 3. Query with SQL
+
+```bash
 dataspoc-lens query "SELECT * FROM orders LIMIT 10"
+dataspoc-lens query "SELECT status, COUNT(*) FROM orders GROUP BY status"
+```
 
-# Launch the interactive shell
+### 4. Launch the interactive shell
+
+```bash
 dataspoc-lens shell
+```
 
-# Ask a question in plain English
+```
+lens> SELECT customer_id, SUM(total) FROM orders GROUP BY 1 ORDER BY 2 DESC LIMIT 10;
+lens> .tables
+lens> .schema orders
+lens> .export csv /tmp/orders.csv
+lens> .quit
+```
+
+### 5. Configure AI and ask questions
+
+Before using `ask`, configure an LLM provider:
+
+**Option A -- Local AI (free, no API key):**
+
+```bash
+dataspoc-lens setup-ai
+```
+
+**Option B -- Cloud provider:**
+
+```bash
+# Anthropic (default)
+export DATASPOC_LLM_API_KEY=sk-ant-...
+
+# OpenAI
+export DATASPOC_LLM_PROVIDER=openai
+export DATASPOC_LLM_API_KEY=sk-...
+```
+
+Then ask questions in natural language:
+
+```bash
 dataspoc-lens ask "how many orders were placed yesterday?"
+dataspoc-lens ask "top 10 customers by revenue this month"
+dataspoc-lens ask --debug "average order value by month"
 ```
 
-## Features Overview
+Lens sends your table schemas and sample data to the LLM, receives SQL, executes it, and prints the results. Use `--debug` to see the full prompt sent to the LLM.
 
-### Shell
+### 6. Export results
 
-An interactive SQL REPL powered by `prompt_toolkit` with syntax highlighting, autocomplete for table and column names, and dot commands (`.tables`, `.schema`, `.export`, `.help`).
+Add `--export` to any `query` or `ask` command. Format is detected from the file extension:
 
+```bash
+dataspoc-lens query "SELECT * FROM orders" --export orders.csv
+dataspoc-lens query "SELECT * FROM users" --export users.parquet
+dataspoc-lens ask "monthly revenue" --export revenue.json
 ```
-$ dataspoc-lens shell
-lens> SELECT customer_id, count(*) FROM orders GROUP BY 1 ORDER BY 2 DESC LIMIT 5;
-```
+
+## Features
+
+### Interactive Shell
+
+SQL REPL with syntax highlighting, autocomplete, and history. Dot commands: `.tables`, `.schema <table>`, `.buckets`, `.cache <table>`, `.export <format> <path>`, `.help`, `.quit`.
 
 ### Notebook
 
-Launch JupyterLab or Marimo with all tables pre-mounted — ready to query from the first cell.
+Launch JupyterLab or Marimo with all tables pre-mounted:
 
 ```bash
-# JupyterLab (default)
 pip install dataspoc-lens[jupyter]
 dataspoc-lens notebook
 
-# Marimo (reactive — cells update automatically)
 pip install dataspoc-lens[marimo]
 dataspoc-lens notebook --marimo
 ```
 
-### AI Ask
+### SQL Transforms
 
-Turn plain English into SQL. Lens sends your schema and a data sample to the LLM, gets back SQL, and executes it.
-
-```bash
-# One-time setup: install local AI (free, no API key)
-dataspoc-lens setup-ai
-
-# Ask questions
-dataspoc-lens ask "top 10 customers by revenue this month"
-dataspoc-lens ask "which cities have the most orders?" --export cities.csv
-```
-
-Configure in `~/.dataspoc-lens/config.yaml`:
-
-```yaml
-llm:
-  provider: ollama          # ollama (local, free), anthropic, openai
-  model: duckdb-nsql:7b     # or qwen2.5-coder:1.5b (lighter)
-```
-
-<details><summary>Use a cloud provider instead</summary>
+Numbered `.sql` files in `~/.dataspoc-lens/transforms/` that run in order:
 
 ```bash
-export DATASPOC_LLM_PROVIDER=anthropic
-export DATASPOC_LLM_API_KEY=sk-...
-dataspoc-lens ask "which products have declining sales?"
-```
-
-</details>
-
-### Cache
-
-Copy tables from the cloud to your local machine. Work offline, reduce latency, avoid egress costs. Queries automatically use local cache when fresh.
-
-```bash
-# Cache a table locally
-dataspoc-lens cache orders
-
-# Check cache status (fresh/stale)
-dataspoc-lens cache --list
-
-# Re-download after new data arrives
-dataspoc-lens cache orders --refresh
-
-# Clear cache
-dataspoc-lens cache --clear
-```
-
-Freshness: compares your cache timestamp against the manifest's `last_extraction`. If Pipe ran after your cache, it shows "stale".
-
-### Transforms
-
-Numbered `.sql` files in `~/.dataspoc-lens/transforms/` that run in order, writing results to the `/curated/` prefix.
-
-```
-transforms/
-  001_clean_users.sql
-  002_aggregate_orders.sql
-  003_build_summary.sql
-```
-
-```bash
+dataspoc-lens transform list
 dataspoc-lens transform run
 ```
 
-### Export
+### Cache
 
-Add `--export` to any query or ask command to save results as CSV, JSON, or Parquet.
+Copy tables locally for offline work and reduced egress costs:
 
 ```bash
-dataspoc-lens query "SELECT * FROM orders" --export csv -o orders.csv
-dataspoc-lens ask "monthly revenue" --export parquet -o revenue.parquet
+dataspoc-lens cache orders              # Cache a table
+dataspoc-lens cache --list              # Check status (fresh/stale)
+dataspoc-lens cache orders --refresh    # Re-download
+dataspoc-lens cache --clear             # Clear all
 ```
 
-## Access Control
+Freshness: compares your cache timestamp against the manifest's `last_extraction`.
 
-DataSpoc delegates all access control to your cloud provider's IAM. The recommended pattern is **one bucket per permission level**:
+## Commands
 
-| Bucket | Audience |
-|--------|----------|
-| `s3://company-public` | All employees |
-| `s3://company-finance` | Finance team |
-| `s3://company-executive` | C-level only |
-
-Each user's cloud credentials determine which buckets they can see. If a user lacks IAM permission, `add-bucket` fails with "Access Denied" and no data is exposed. Lens needs only **read** access.
+```bash
+dataspoc-lens init                          # Initialize configuration
+dataspoc-lens add-bucket <uri>              # Register a bucket
+dataspoc-lens catalog                       # List all tables
+dataspoc-lens catalog --detail <table>      # Show table schema
+dataspoc-lens query "<sql>"                 # Execute SQL query
+dataspoc-lens query "<sql>" --export f.csv  # Execute and export
+dataspoc-lens shell                         # Interactive SQL shell
+dataspoc-lens ask "<question>"              # Natural language query
+dataspoc-lens ask "<question>" --debug      # Show LLM prompt
+dataspoc-lens setup-ai                      # Install local AI (Ollama)
+dataspoc-lens notebook                      # Launch JupyterLab
+dataspoc-lens notebook --marimo             # Launch Marimo
+dataspoc-lens transform list                # List transform files
+dataspoc-lens transform run                 # Run all transforms
+dataspoc-lens cache <table>                 # Cache a table locally
+dataspoc-lens cache --list                  # List cached tables
+dataspoc-lens cache --clear                 # Clear cache
+dataspoc-lens ml activate [key]             # Activate DataSpoc ML
+dataspoc-lens ml train --target col --from tbl  # Train a model
+dataspoc-lens ml predict --model m --from tbl   # Generate predictions
+dataspoc-lens ml models                     # List trained models
+dataspoc-lens --version                     # Show version
+```
 
 ## Part of the DataSpoc Platform
 
-| Layer | Role |
-|-------|------|
-| **DataSpoc Pipe** | Ingest data from APIs into cloud storage as Parquet |
-| **DataSpoc Lens** | Query cloud Parquet with SQL, shell, notebooks, and AI |
-| **DataSpoc ML** | Machine learning on your data lake (commercial) |
+| Product | Role |
+|---------|------|
+| **[DataSpoc Pipe](https://github.com/dataspoclab/dataspoc-pipe)** | Ingestion: Singer taps to Parquet in cloud buckets |
+| **[DataSpoc Lens](https://github.com/dataspoclab/dataspoc-lens)** (this) | Virtual warehouse: SQL + Jupyter + AI over your data lake |
+| **DataSpoc ML** | AutoML: train and deploy models from your lake |
 
 Pipe writes. Lens reads. ML learns.
 
 ## Community
 
-- **Discord** -- [Join the conversation](#) for questions and discussion
 - **GitHub Issues** -- [Report bugs or request features](https://github.com/dataspoclab/dataspoc-lens/issues)
 - **Contributing** -- PRs welcome. Run `pytest tests/ -v` before submitting.
 
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](LICENSE) -- free to use, modify, and distribute.
