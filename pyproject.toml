@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dataspoc-lens"
-version = "0.1.1"
-description = "Virtual warehouse — SQL over cloud Parquet via DuckDB"
+version = "0.2.0"
+description = "Data lake query engine for humans and AI agents — SQL, Jupyter, AI and MCP over cloud Parquet via DuckDB"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
