@@ -7,11 +7,11 @@
   <a href="https://pypi.org/project/dataspoc-lens/"><img src="https://img.shields.io/pypi/pyversions/dataspoc-lens?style=flat-square" alt="Python 3.10+"></a>
 </p>
 
-<p align="center"><em>SQL over cloud Parquet. Query your data lake from the terminal.</em></p>
+<p align="center"><em>The data lake query engine for humans and AI agents.</em></p>
 
 ## Why Lens?
 
-Data teams store Parquet in S3, GCS, or Azure but still spin up heavy warehouses just to run SQL. **DataSpoc Lens** mounts cloud buckets as DuckDB views and gives you an interactive shell, notebooks, AI-powered queries, and local caching -- all from a single CLI. No servers, no infrastructure, no data copying.
+Data teams store Parquet in S3, GCS, or Azure but still spin up heavy warehouses just to run SQL. **DataSpoc Lens** mounts cloud buckets as DuckDB views and gives you an interactive shell, notebooks, AI-powered queries, and local caching -- all from a single CLI. Works from the terminal or as an MCP server for AI agents like Claude, Cursor, and Windsurf. No servers, no infrastructure, no data copying.
 
 ## Installation
 
