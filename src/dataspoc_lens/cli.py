@@ -118,6 +118,7 @@ def add_bucket(
 @app.command()
 def catalog(
     detail: str = typer.Option(None, "--detail", help="Show detailed schema for a table"),
+    output: str = typer.Option("table", "--output", help="Output format: table or json"),
 ) -> None:
     """List all tables from registered buckets."""
     from dataspoc_lens.catalog import discover_tables, get_table_columns, mount_views
@@ -148,12 +149,31 @@ def catalog(
             console.print(f"[red]Table '{detail}' not found.[/red]")
             return
 
+        if output == "json":
+            import json as json_mod
+            print(json_mod.dumps(cols, default=str))
+            return
+
         schema_table = Table(title=f"Schema: {detail}")
         schema_table.add_column("Column", style="bold")
         schema_table.add_column("Type")
         for c in cols:
             schema_table.add_row(c["column_name"], c["data_type"])
         console.print(schema_table)
+        return
+
+    if output == "json":
+        import json as json_mod
+        data = [
+            {
+                "table": t.table,
+                "columns": len(t.columns),
+                "rows": t.row_count,
+                "source": t.source,
+            }
+            for t in all_tables
+        ]
+        print(json_mod.dumps(data, default=str))
         return
 
     table_view = Table(title="Catalog")
@@ -182,6 +202,7 @@ def cache(
     list_cached: bool = typer.Option(False, "--list", help="List cached tables"),
     refresh: bool = typer.Option(False, "--refresh", help="Force re-download"),
     clear: bool = typer.Option(False, "--clear", help="Clear cached data"),
+    output: str = typer.Option("table", "--output", help="Output format: table or json"),
 ) -> None:
     """Manage local cache of remote Parquet data."""
     from dataspoc_lens.cache import cache_table, clear_cache, list_cached_tables
@@ -193,6 +214,12 @@ def cache(
         if not cached:
             console.print("[yellow]No cached tables.[/yellow]")
             return
+
+        if output == "json":
+            import json as json_mod
+            print(json_mod.dumps(cached, default=str))
+            return
+
         table_view = Table(title="Cached Tables")
         table_view.add_column("Table", style="bold")
         table_view.add_column("Cached At")
@@ -254,6 +281,7 @@ def cache(
 def query(
     sql: str = typer.Argument(..., help="SQL query to execute"),
     export: str = typer.Option("", "--export", "-e", help="Export to file (format from extension: .csv, .json, .parquet)"),
+    output: str = typer.Option("table", "--output", help="Output format: table or json"),
 ) -> None:
     """Execute a SQL query and print results."""
     from dataspoc_lens.catalog import discover_tables, mount_views
@@ -272,8 +300,19 @@ def query(
 
     try:
         columns, rows, duration = run_query(conn, sql)
-        console.print(format_results(columns, rows))
-        console.print(f"\n({len(rows)} row(s), {duration:.3f}s)")
+
+        if output == "json":
+            import json as json_mod
+            data = {
+                "columns": columns,
+                "rows": [list(r) for r in rows],
+                "row_count": len(rows),
+                "duration": duration,
+            }
+            print(json_mod.dumps(data, default=str))
+        else:
+            console.print(format_results(columns, rows))
+            console.print(f"\n({len(rows)} row(s), {duration:.3f}s)")
 
         if export:
             _export_results(conn, sql, export)
@@ -419,6 +458,7 @@ def ask(
     question: str = typer.Argument(..., help="Natural language question"),
     debug: bool = typer.Option(False, "--debug", help="Show prompt sent to LLM"),
     export: str = typer.Option("", "--export", "-e", help="Export results to file (.csv, .json, .parquet)"),
+    output: str = typer.Option("table", "--output", help="Output format: table or json"),
 ) -> None:
     """Ask a question in natural language and get SQL results."""
     import os
@@ -462,6 +502,20 @@ def ask(
         from dataspoc_lens.ai import ask as ai_ask
 
         result = ai_ask(conn, question, provider=provider, api_key=api_key, model=model, debug=debug)
+
+        if output == "json":
+            import json as json_mod
+            json_result = {
+                "sql": result.get("sql"),
+                "columns": result.get("columns"),
+                "rows": [list(r) for r in result.get("rows", [])] if result.get("rows") else [],
+                "duration": result.get("duration"),
+                "error": result.get("error"),
+            }
+            print(json_mod.dumps(json_result, default=str))
+            if result.get("error"):
+                raise typer.Exit(1)
+            return
 
         if debug:
             console.print("[dim]--- Prompt sent to LLM ---[/dim]")
@@ -534,6 +588,14 @@ def _get_first_bucket() -> str:
         console.print("[red]No buckets registered. Use 'dataspoc-lens add-bucket' first.[/red]")
         raise typer.Exit(1)
     return config.buckets[0]
+
+
+@app.command()
+def mcp() -> None:
+    """Start MCP server for AI agent integration."""
+    from dataspoc_lens.mcp_server import run_server
+
+    run_server()
 
 
 @ml_app.command("activate")

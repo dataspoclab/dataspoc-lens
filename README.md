@@ -150,6 +150,53 @@ dataspoc-lens cache --clear             # Clear all
 
 Freshness: compares your cache timestamp against the manifest's `last_extraction`.
 
+## AI Agent Integration
+
+Lens works as an MCP server for Claude Desktop, Claude Code, Cursor, and any MCP-compatible AI agent.
+
+```bash
+pip install dataspoc-lens[mcp]
+dataspoc-lens mcp                           # Start MCP server (stdio)
+```
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "dataspoc-lens": {
+      "command": "dataspoc-lens",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Your agent can now discover tables, run SQL, ask questions in natural language, and manage cache.
+
+### Python SDK
+
+```python
+from dataspoc_lens import LensClient
+
+with LensClient() as client:
+    tables = client.tables()
+    schema = client.schema("orders")
+    result = client.query("SELECT status, COUNT(*) FROM orders GROUP BY 1")
+    answer = client.ask("top 10 customers by revenue")
+    stale = client.cache_refresh_stale()
+```
+
+### JSON Output
+
+All CLI commands support `--output json` for machine-readable output:
+
+```bash
+dataspoc-lens catalog --output json
+dataspoc-lens query "SELECT * FROM orders LIMIT 5" --output json
+dataspoc-lens ask "monthly revenue" --output json
+```
+
 ## Commands
 
 ```bash
@@ -170,6 +217,7 @@ dataspoc-lens transform run                 # Run all transforms
 dataspoc-lens cache <table>                 # Cache a table locally
 dataspoc-lens cache --list                  # List cached tables
 dataspoc-lens cache --clear                 # Clear cache
+dataspoc-lens mcp                           # Start MCP server for AI agents
 dataspoc-lens ml activate [key]             # Activate DataSpoc ML
 dataspoc-lens ml train --target col --from tbl  # Train a model
 dataspoc-lens ml predict --model m --from tbl   # Generate predictions

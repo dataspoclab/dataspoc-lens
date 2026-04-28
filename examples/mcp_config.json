@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dataspoc-lens": {
+      "command": "dataspoc-lens",
+      "args": ["mcp"]
+    }
+  }
+}
